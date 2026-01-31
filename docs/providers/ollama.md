@@ -6,7 +6,7 @@ read_when:
 ---
 # Ollama
 
-Ollama is a local LLM runtime that makes it easy to run open-source models on your machine. Moltbot integrates with Ollama's OpenAI-compatible API and can **auto-discover tool-capable models** when you opt in with `OLLAMA_API_KEY` (or an auth profile) and do not define an explicit `models.providers.ollama` entry.
+Ollama is a local LLM runtime that makes it easy to run open-source models on your machine. Moltbot integrates with Ollama's OpenAI-compatible API. When you select **Ollama** during `moltbot onboard`, it will **auto-discover models** from your local Ollama instance.
 
 ## Quick start
 
@@ -22,17 +22,15 @@ ollama pull qwen2.5-coder:32b
 ollama pull deepseek-r1:32b
 ```
 
-3) Enable Ollama for Moltbot (any value works; Ollama doesn't require a real key):
+3) Run the onboarding wizard and select Ollama:
 
 ```bash
-# Set environment variable
-export OLLAMA_API_KEY="ollama-local"
-
-# Or configure in your config file
-moltbot config set models.providers.ollama.apiKey "ollama-local"
+moltbot onboard
 ```
 
 4) Use Ollama models:
+
+Moltbot auto-discovers models from your local Ollama instance after you select it during onboarding.
 
 ```json5
 {
@@ -44,9 +42,9 @@ moltbot config set models.providers.ollama.apiKey "ollama-local"
 }
 ```
 
-## Model discovery (implicit provider)
+## Model discovery (onboarding)
 
-When you set `OLLAMA_API_KEY` (or an auth profile) and **do not** define `models.providers.ollama`, Moltbot discovers models from the local Ollama instance at `http://127.0.0.1:11434`:
+When you select **Ollama** in the `moltbot onboard` wizard, Moltbot discovers models from the local Ollama instance at `http://127.0.0.1:11434`:
 
 - Queries `/api/tags` and `/api/show`
 - Keeps only models that report `tools` capability
@@ -70,18 +68,22 @@ To add a new model, simply pull it with Ollama:
 ollama pull mistral
 ```
 
-The new model will be automatically discovered and available to use.
+The new model will be automatically discovered and available to use after you re-run `moltbot models list` or restart the gateway.
 
-If you set `models.providers.ollama` explicitly, auto-discovery is skipped and you must define models manually (see below).
+If you set `models.providers.ollama` explicitly in your configuration, auto-discovery is skipped and you must define models manually (see below).
 
 ## Configuration
 
-### Basic setup (implicit discovery)
+### Custom API Key
 
-The simplest way to enable Ollama is via environment variable:
+While Ollama doesn't require an API key by default, you can configure one if your setup requires it (e.g., if you have a proxy in front of Ollama):
 
 ```bash
-export OLLAMA_API_KEY="ollama-local"
+# Set environment variable
+export OLLAMA_API_KEY="your-key"
+
+# Or configure in your config file
+moltbot config set models.providers.ollama.apiKey "your-key"
 ```
 
 ### Explicit setup (manual models)
@@ -98,7 +100,6 @@ Use explicit config when:
       ollama: {
         // Use a host that includes /v1 for OpenAI-compatible APIs
         baseUrl: "http://ollama-host:11434/v1",
-        apiKey: "ollama-local",
         api: "openai-completions",
         models: [
           {
@@ -117,8 +118,6 @@ Use explicit config when:
 }
 ```
 
-If `OLLAMA_API_KEY` is set, you can omit `apiKey` in the provider entry and Moltbot will fill it for availability checks.
-
 ### Custom base URL (explicit config)
 
 If Ollama is running on a different host or port (explicit config disables auto-discovery, so define models manually):
@@ -128,7 +127,6 @@ If Ollama is running on a different host or port (explicit config disables auto-
   models: {
     providers: {
       ollama: {
-        apiKey: "ollama-local",
         baseUrl: "http://ollama-host:11434/v1"
       }
     }
@@ -169,13 +167,13 @@ Ollama is free and runs locally, so all model costs are set to $0.
 
 ### Context windows
 
-For auto-discovered models, Moltbot uses the context window reported by Ollama when available, otherwise it defaults to `8192`. You can override `contextWindow` and `maxTokens` in explicit provider config.
+For auto-discovered models, Moltbot uses the context window reported by Ollama when available, otherwise it defaults to `128000`. You can override `contextWindow` and `maxTokens` in explicit provider config.
 
 ## Troubleshooting
 
 ### Ollama not detected
 
-Make sure Ollama is running and that you set `OLLAMA_API_KEY` (or an auth profile), and that you did **not** define an explicit `models.providers.ollama` entry:
+Make sure Ollama is running and that you've selected it during `moltbot onboard`:
 
 ```bash
 ollama serve

@@ -1,7 +1,7 @@
 {
   "name": "moltbot-termux",
-  "version": "2026.1.29",
-  "description": "WhatsApp gateway CLI (Baileys web) with Pi RPC agent",
+  "version": "2026.1.30",
+  "description": "OpenClaw distribution for Android (Termux)",
   "type": "module",
   "main": "dist/index.js",
   "exports": {

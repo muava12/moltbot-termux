@@ -31,6 +31,10 @@ export type AuthChoice =
   | "github-copilot"
   | "copilot-proxy"
   | "qwen-portal"
+  | "xiaomi-api-key"
+  | "groq-api-key"
+  | "cerebras-api-key"
+  | "ollama"
   | "skip";
 export type GatewayAuthChoice = "token" | "password";
 export type ResetScope = "config" | "config+creds+sessions" | "full";
@@ -70,7 +74,12 @@ export type OnboardOptions = {
   minimaxApiKey?: string;
   syntheticApiKey?: string;
   veniceApiKey?: string;
+  xiaomiApiKey?: string;
+  groqApiKey?: string;
+  cerebrasApiKey?: string;
+  cerebrasModelId?: string;
   opencodeZenApiKey?: string;
+  ollamaApiKey?: string;
   gatewayPort?: number;
   gatewayBind?: GatewayBind;
   gatewayAuth?: GatewayAuthChoice;

@@ -18,6 +18,9 @@ import {
   applyVeniceConfig,
   applyVercelAiGatewayConfig,
   applyZaiConfig,
+  applyXiaomiConfig,
+  applyGroqConfig,
+  applyCerebrasConfig,
   setAnthropicApiKey,
   setGeminiApiKey,
   setKimiCodeApiKey,
@@ -26,6 +29,9 @@ import {
   setOpencodeZenApiKey,
   setOpenrouterApiKey,
   setSyntheticApiKey,
+  setXiaomiApiKey,
+  setGroqApiKey,
+  setCerebrasApiKey,
   setVeniceApiKey,
   setVercelAiGatewayApiKey,
   setZaiApiKey,
@@ -288,6 +294,63 @@ export async function applyNonInteractiveAuthChoice(params: {
       mode: "api_key",
     });
     return applySyntheticConfig(nextConfig);
+  }
+
+  if (authChoice === "xiaomi-api-key") {
+    const resolved = await resolveNonInteractiveApiKey({
+      provider: "xiaomi",
+      cfg: baseConfig,
+      flagValue: opts.xiaomiApiKey,
+      flagName: "--xiaomi-api-key",
+      envVar: "XIAOMI_API_KEY",
+      runtime,
+    });
+    if (!resolved) return null;
+    if (resolved.source !== "profile") await setXiaomiApiKey(resolved.key);
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "xiaomi:default",
+      provider: "xiaomi",
+      mode: "api_key",
+    });
+    return applyXiaomiConfig(nextConfig);
+  }
+
+  if (authChoice === "groq-api-key") {
+    const resolved = await resolveNonInteractiveApiKey({
+      provider: "groq",
+      cfg: baseConfig,
+      flagValue: opts.groqApiKey,
+      flagName: "--groq-api-key",
+      envVar: "GROQ_API_KEY",
+      runtime,
+    });
+    if (!resolved) return null;
+    if (resolved.source !== "profile") await setGroqApiKey(resolved.key);
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "groq:default",
+      provider: "groq",
+      mode: "api_key",
+    });
+    return applyGroqConfig(nextConfig);
+  }
+
+  if (authChoice === "cerebras-api-key") {
+    const resolved = await resolveNonInteractiveApiKey({
+      provider: "cerebras",
+      cfg: baseConfig,
+      flagValue: opts.cerebrasApiKey,
+      flagName: "--cerebras-api-key",
+      envVar: "CEREBRAS_API_KEY",
+      runtime,
+    });
+    if (!resolved) return null;
+    if (resolved.source !== "profile") await setCerebrasApiKey(resolved.key);
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "cerebras:default",
+      provider: "cerebras",
+      mode: "api_key",
+    });
+    return applyCerebrasConfig(nextConfig);
   }
 
   if (authChoice === "venice-api-key") {

@@ -39,6 +39,7 @@ import {
   resolveCompactionReserveTokensFloor,
 } from "../../pi-settings.js";
 import { createMoltbotCodingTools } from "../../pi-tools.js";
+import type { AnyAgentTool } from "../../pi-tools.types.js";
 import { resolveSandboxContext } from "../../sandbox.js";
 import { guardSessionManager } from "../../session-tool-result-guard-wrapper.js";
 import { resolveTranscriptPolicy } from "../../transcript-policy.js";
@@ -199,20 +200,22 @@ export async function runEmbeddedAttempt(
 
     // Check if the model supports native image input
     const modelHasVision = params.model.input?.includes("image") ?? false;
-    const toolsRaw = params.disableTools
-      ? []
-      : createMoltbotCodingTools({
-          exec: {
-            ...params.execOverrides,
-            elevated: params.bashElevated,
-          },
-          sandbox,
-          messageProvider: params.messageChannel ?? params.messageProvider,
-          agentAccountId: params.agentAccountId,
-          messageTo: params.messageTo,
-          messageThreadId: params.messageThreadId,
-          groupId: params.groupId,
-          groupChannel: params.groupChannel,
+    const toolsRaw = params.tools
+      ? params.tools
+      : params.disableTools
+        ? []
+        : createMoltbotCodingTools({
+            exec: {
+              ...params.execOverrides,
+              elevated: params.bashElevated,
+            },
+            sandbox,
+            messageProvider: params.messageChannel ?? params.messageProvider,
+            agentAccountId: params.agentAccountId,
+            messageTo: params.messageTo,
+            messageThreadId: params.messageThreadId,
+            groupId: params.groupId,
+            groupChannel: params.groupChannel,
           groupSpace: params.groupSpace,
           spawnedBy: params.spawnedBy,
           senderId: params.senderId,

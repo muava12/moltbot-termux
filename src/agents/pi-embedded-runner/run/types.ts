@@ -11,6 +11,7 @@ import type { BlockReplyChunking, ToolResultFormat } from "../../pi-embedded-sub
 import type { SkillSnapshot } from "../../skills.js";
 import type { SessionSystemPromptReport } from "../../../config/sessions/types.js";
 import type { ClientToolDefinition } from "./params.js";
+import type { AnyAgentTool } from "../../pi-tools.types.js";
 
 type AuthStorage = ReturnType<typeof discoverAuthStorage>;
 type ModelRegistry = ReturnType<typeof discoverModels>;
@@ -50,6 +51,11 @@ export type EmbeddedRunAttemptParams = {
   clientTools?: ClientToolDefinition[];
   /** Disable built-in tools for this run (LLM-only mode). */
   disableTools?: boolean;
+  /**
+   * Optional override for the tools to use for this run.
+   * When provided, this skips the default tool creation and filtering logic.
+   */
+  tools?: AnyAgentTool[];
   provider: string;
   modelId: string;
   model: Model<Api>;

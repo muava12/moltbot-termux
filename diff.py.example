@@ -1,0 +1,143 @@
+import subprocess
+import json
+import os
+import re
+
+# --- Config ---
+GITHUB_TOKEN = "github token"
+REPO_NAME = "forked repo"
+UPSTREAM_REPO = "original repo"
+
+def get_todo_content():
+    if not os.path.exists("todo.md"):
+        return ""
+    try:
+        with open("todo.md", "r") as f:
+            return f.read()
+    except Exception as e:
+        print(f"Warning: Could not read todo.md: {e}")
+        return ""
+
+def get_missing_commits():
+    # Construct the GitHub API URL for comparison
+    url = f"https://api.github.com/repos/{REPO_NAME}/compare/main...{UPSTREAM_REPO.split('/')[0]}:main"
+    headers = f"Authorization: token {GITHUB_TOKEN}"
+    
+    try:
+        cmd = ["curl", "-s", "-H", headers, url]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        data = json.loads(result.stdout)
+        return [c['commit']['message'] for c in data.get('commits', [])]
+    except Exception as e:
+        print(f"Error fetching from GitHub: {e}")
+        return []
+
+def call_gemini_cli(commit_list, existing_todo):
+    commits_text = "\n".join(commit_list)
+    prompt = (
+        f"CONTEXT (Current Todo):\n{existing_todo}\n\n"
+        f"INPUT (New Commits):\n{commits_text}\n\n"
+        "STRICT TASK:\n"
+        "1. Generate a Markdown checklist (- [ ]) for new features or bug fixes in the INPUT that are NOT in the CONTEXT.\n"
+        "2. DO NOT include chores, README, versioning, or branding.\n"
+        "3. OUTPUT ONLY THE CHECKLIST ITEMS. NO PREAMBLE. NO EXPLANATIONS. NO 'OKAY'. NO 'HERE IS THE TODO'.\n"
+        "4. If nothing is new, output exactly: NO_NEW_TASKS"
+    )
+
+    print("Sending prompt to Gemini CLI...")
+    try:
+        cmd = ["gemini", "-m", "gemini-2.0-flash", "--approval-mode", "yolo", prompt]
+        result = subprocess.run(
+            cmd, 
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True, 
+            check=True,
+            timeout=120
+        )
+        print("Gemini CLI finished.")
+        output = result.stdout.strip()
+        if "NO_NEW_TASKS" in output:
+            return None
+        return output
+    except subprocess.TimeoutExpired:
+        print("Gemini CLI timed out after 120 seconds.")
+        return None
+    except subprocess.CalledProcessError as e:
+        print(f"Gemini CLI Error (Exit Code {e.returncode})")
+        return None
+    except Exception as e:
+        print(f"Unexpected Error: {e}")
+        return None
+
+def filter_commits_manually(commits, existing_content):
+    if not existing_content:
+        return commits
+    # Basic pre-filter to reduce prompt size if needed
+    return [c for c in commits if c.lower() not in existing_content.lower()]
+
+# --- Logic ---
+todo_content = get_todo_content()
+commits = get_missing_commits()
+
+if commits:
+    # Pre-filter to remove exact matches and reduce prompt size
+    filtered_commits = filter_commits_manually(commits, todo_content)
+    
+    if not filtered_commits:
+        print("All commits are already present in todo.md (exact match).")
+    else:
+        print(f"Processing {len(filtered_commits)} potentially new commits...")
+        # Passing only filtered commits and current todo as requested
+        todo_markdown = call_gemini_cli(filtered_commits, todo_content)
+        
+        if todo_markdown and todo_markdown.strip():
+            date_str = os.popen('date').read().strip()
+            new_header = f"## Upstream Tasks (Sync: {date_str})"
+            
+            if os.path.exists("todo.md"):
+                with open("todo.md", "r") as f:
+                    content = f.read()
+            else:
+                content = "# Project Todo\n"
+
+            # Find all Upstream Tasks sections
+            pattern = r"## Upstream Tasks \(Sync: [^)]+\)"
+            matches = list(re.finditer(pattern, content))
+            
+            if matches:
+                # Update the last one
+                last_match = matches[-1]
+                start, end = last_match.span()
+                
+                # Find the end of this section (before the next ## header or EOF)
+                next_header_match = re.search(r"\n## ", content[end:])
+                if next_header_match:
+                    section_end = end + next_header_match.start()
+                else:
+                    section_end = len(content)
+                
+                section_body = content[end:section_end].rstrip()
+                if section_body and not section_body.endswith("\n"):
+                    section_body += "\n"
+                
+                new_content = (
+                    content[:start] + 
+                    new_header + 
+                    section_body + 
+                    todo_markdown + "\n" +
+                    content[section_end:]
+                )
+            else:
+                # Create new section if none exists
+                if not content.strip():
+                    content = "# Project Todo\n"
+                new_content = content.rstrip() + f"\n\n{new_header}\n{todo_markdown}\n"
+            
+            with open("todo.md", "w") as f:
+                f.write(new_content)
+            print("Done!")
+        else:
+            print("No new tasks identified by Gemini.")
+else:
+    print("No new commits found.")

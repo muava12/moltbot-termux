@@ -2,8 +2,42 @@ export type ReasoningTagMode = "strict" | "preserve";
 export type ReasoningTagTrim = "none" | "start" | "both";
 
 const QUICK_TAG_RE = /<\s*\/?\s*(?:think(?:ing)?|thought|antthinking|final)\b/i;
-const FINAL_TAG_RE = /<\s*\/?\s*final\b[^>]*>/gi;
-const THINKING_TAG_RE = /<\s*(\/?)\s*(?:think(?:ing)?|thought|antthinking)\b[^>]*>/gi;
+const FINAL_TAG_RE = /<\s*\/?\s*final\b[^<>]*>/gi;
+const THINKING_TAG_RE = /<\s*(\/?)\s*(?:think(?:ing)?|thought|antthinking)\b[^<>]*>/gi;
+
+interface CodeRegion {
+  start: number;
+  end: number;
+}
+
+function findCodeRegions(text: string): CodeRegion[] {
+  const regions: CodeRegion[] = [];
+  const FENCED_RE = /^ {0,3}(`{3,}|~{3,})([\s\S]*?)^ {0,3}\1/gm;
+  const INLINE_RE = /(`+)([\s\S]*?)\1/g;
+
+  let match: RegExpExecArray | null;
+
+  // Find fenced blocks first
+  while ((match = FENCED_RE.exec(text)) !== null) {
+    regions.push({ start: match.index, end: FENCED_RE.lastIndex });
+  }
+
+  // Find inline code, skipping positions inside fenced blocks
+  INLINE_RE.lastIndex = 0;
+  while ((match = INLINE_RE.exec(text)) !== null) {
+    const start = match.index;
+    const end = INLINE_RE.lastIndex;
+    if (!regions.some((r) => start >= r.start && start < r.end)) {
+      regions.push({ start, end });
+    }
+  }
+
+  return regions.sort((a, b) => a.start - b.start);
+}
+
+function isInsideCode(pos: number, regions: CodeRegion[]): boolean {
+  return regions.some((r) => pos >= r.start && pos < r.end);
+}
 
 function applyTrim(value: string, mode: ReasoningTagTrim): string {
   if (mode === "none") return value;
@@ -24,10 +58,21 @@ export function stripReasoningTagsFromText(
   const mode = options?.mode ?? "strict";
   const trimMode = options?.trim ?? "both";
 
+  const codeRegions = findCodeRegions(text);
+
   let cleaned = text;
   if (FINAL_TAG_RE.test(cleaned)) {
     FINAL_TAG_RE.lastIndex = 0;
-    cleaned = cleaned.replace(FINAL_TAG_RE, "");
+    let finalResult = "";
+    let finalLastIndex = 0;
+    for (const match of cleaned.matchAll(FINAL_TAG_RE)) {
+      const idx = match.index ?? 0;
+      if (isInsideCode(idx, codeRegions)) continue;
+      finalResult += cleaned.slice(finalLastIndex, idx);
+      finalLastIndex = idx + match[0].length;
+    }
+    finalResult += cleaned.slice(finalLastIndex);
+    cleaned = finalResult;
   } else {
     FINAL_TAG_RE.lastIndex = 0;
   }
@@ -40,6 +85,8 @@ export function stripReasoningTagsFromText(
   for (const match of cleaned.matchAll(THINKING_TAG_RE)) {
     const idx = match.index ?? 0;
     const isClose = match[1] === "/";
+
+    if (isInsideCode(idx, codeRegions)) continue;
 
     if (!inThinking) {
       result += cleaned.slice(lastIndex, idx);

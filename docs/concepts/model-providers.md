@@ -202,6 +202,34 @@ Model refs:
 
 See [/providers/qwen](/providers/qwen) for setup details and notes.
 
+### Xiaomi MiMo
+
+Xiaomi MiMo offers fast inference with a large context window:
+
+- Provider: `xiaomi`
+- Auth: `XIAOMI_API_KEY`
+- Example model: `xiaomi/mimo-v2-flash`
+- CLI: `moltbot onboard --auth-choice xiaomi-api-key`
+
+```json5
+{
+  agents: {
+    defaults: { model: { primary: "xiaomi/mimo-v2-flash" } }
+  },
+  models: {
+    mode: "merge",
+    providers: {
+      xiaomi: {
+        baseUrl: "https://api.mimo.ai/v1",
+        apiKey: "${XIAOMI_API_KEY}",
+        api: "openai-completions",
+        models: [{ id: "mimo-v2-flash", name: "MiMo-V2-Flash" }]
+      }
+    }
+  }
+}
+```
+
 ### Synthetic
 
 Synthetic provides Anthropic-compatible models behind the `synthetic` provider:
@@ -241,7 +269,7 @@ See [/providers/minimax](/providers/minimax) for setup details, model options, a
 
 ### Ollama
 
-Ollama is a local LLM runtime that provides an OpenAI-compatible API:
+Ollama is a local LLM runtime that provides an OpenAI-compatible API. Select **Ollama** during `moltbot onboard` to enable auto-discovery of local models.
 
 - Provider: `ollama`
 - Auth: None required (local server)
@@ -261,7 +289,7 @@ ollama pull llama3.3
 }
 ```
 
-Ollama is automatically detected when running locally at `http://127.0.0.1:11434/v1`. See [/providers/ollama](/providers/ollama) for model recommendations and custom configuration.
+See [/providers/ollama](/providers/ollama) for model recommendations and custom configuration.
 
 ### Local proxies (LM Studio, vLLM, LiteLLM, etc.)
 

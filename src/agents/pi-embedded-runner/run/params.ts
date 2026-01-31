@@ -4,8 +4,10 @@ import type { MoltbotConfig } from "../../../config/config.js";
 import type { AgentStreamParams } from "../../../commands/agent/types.js";
 import type { enqueueCommand } from "../../../process/command-queue.js";
 import type { ExecElevatedDefaults, ExecToolDefaults } from "../../bash-tools.js";
+import type { AnyAgentTool } from "../../pi-tools.types.js";
 import type { BlockReplyChunking, ToolResultFormat } from "../../pi-embedded-subscribe.js";
 import type { SkillSnapshot } from "../../skills.js";
+import type { EmbeddedPiRunResult } from "../types.js";
 
 // Simplified tool definition for client-provided tools (OpenResponses hosted tools)
 export type ClientToolDefinition = {
@@ -58,6 +60,11 @@ export type RunEmbeddedPiAgentParams = {
   clientTools?: ClientToolDefinition[];
   /** Disable built-in tools for this run (LLM-only mode). */
   disableTools?: boolean;
+  /**
+   * Optional override for the tools to use for this run.
+   * When provided, this skips the default tool creation and filtering logic.
+   */
+  tools?: AnyAgentTool[];
   provider?: string;
   model?: string;
   authProfileId?: string;
@@ -90,7 +97,10 @@ export type RunEmbeddedPiAgentParams = {
   onToolResult?: (payload: { text?: string; mediaUrls?: string[] }) => void | Promise<void>;
   onAgentEvent?: (evt: { stream: string; data: Record<string, unknown> }) => void;
   lane?: string;
-  enqueue?: typeof enqueueCommand;
+  enqueue?: (
+    task: () => Promise<EmbeddedPiRunResult>,
+    opts?: { warnAfterMs?: number; onWait?: (waitMs: number, queuedAhead: number) => void },
+  ) => Promise<EmbeddedPiRunResult>;
   extraSystemPrompt?: string;
   streamParams?: AgentStreamParams;
   ownerNumbers?: string[];

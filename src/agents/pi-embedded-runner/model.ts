@@ -2,13 +2,13 @@ import type { Api, Model } from "@mariozechner/pi-ai";
 import { discoverAuthStorage, discoverModels } from "@mariozechner/pi-coding-agent";
 
 import type { MoltbotConfig } from "../../config/config.js";
-import type { ModelDefinitionConfig } from "../../config/types.js";
+import type { ModelDefinitionConfig, ModelCompatConfig } from "../../config/types.js";
 import { resolveMoltbotAgentDir } from "../agent-paths.js";
 import { DEFAULT_CONTEXT_TOKENS } from "../defaults.js";
 import { normalizeModelCompat } from "../model-compat.js";
 import { normalizeProviderId } from "../model-selection.js";
 
-type InlineModelEntry = ModelDefinitionConfig & { provider: string; baseUrl?: string };
+type InlineModelEntry = ModelDefinitionConfig & { provider: string; baseUrl?: string; compat?: ModelCompatConfig };
 type InlineProviderConfig = {
   baseUrl?: string;
   api?: ModelDefinitionConfig["api"];
@@ -26,6 +26,7 @@ export function buildInlineProviderModels(
       provider: trimmed,
       baseUrl: entry?.baseUrl,
       api: model.api ?? entry?.api,
+      compat: model.compat,
     }));
   });
 }
@@ -88,6 +89,7 @@ export function resolveModel(
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
         contextWindow: providerCfg?.models?.[0]?.contextWindow ?? DEFAULT_CONTEXT_TOKENS,
         maxTokens: providerCfg?.models?.[0]?.maxTokens ?? DEFAULT_CONTEXT_TOKENS,
+        compat: providerCfg?.models?.[0]?.compat,
       } as Model<Api>);
       return { model: fallbackModel, authStorage, modelRegistry };
     }

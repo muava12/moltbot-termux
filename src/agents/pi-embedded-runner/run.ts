@@ -1,4 +1,6 @@
 import fs from "node:fs/promises";
+import type { Api, Model } from "@mariozechner/pi-ai";
+import { discoverAuthStorage, discoverModels } from "@mariozechner/pi-coding-agent";
 import type { ThinkLevel } from "../../auto-reply/thinking.js";
 import { enqueueCommandInLane } from "../../process/command-queue.js";
 import { resolveUserPath } from "../../utils.js";
@@ -53,6 +55,7 @@ import { buildEmbeddedRunPayloads } from "./run/payloads.js";
 import type { EmbeddedPiAgentMeta, EmbeddedPiRunResult } from "./types.js";
 import { describeUnknownError } from "./utils.js";
 
+import type { ModelCompatConfig } from "../../config/types.models.js";
 type ApiKeyInfo = ResolvedProviderAuth;
 
 // Avoid Anthropic's refusal test token poisoning session transcripts.
@@ -67,15 +70,26 @@ function scrubAnthropicRefusalMagic(prompt: string): string {
   );
 }
 
+type ResolvedModelResult = {
+  model?: Model<Api> & { compat?: ModelCompatConfig };
+  error?: string;
+  authStorage: ReturnType<typeof discoverAuthStorage>;
+  modelRegistry: ReturnType<typeof discoverModels>;
+};
+
 export async function runEmbeddedPiAgent(
   params: RunEmbeddedPiAgentParams,
 ): Promise<EmbeddedPiRunResult> {
   const sessionLane = resolveSessionLane(params.sessionKey?.trim() || params.sessionId);
   const globalLane = resolveGlobalLane(params.lane);
   const enqueueGlobal =
-    params.enqueue ?? ((task, opts) => enqueueCommandInLane(globalLane, task, opts));
+    params.enqueue ??
+    ((task: () => Promise<EmbeddedPiRunResult>, opts?: { warnAfterMs?: number; onWait?: (waitMs: number, queuedAhead: number) => void }) =>
+      enqueueCommandInLane(globalLane, task, opts));
   const enqueueSession =
-    params.enqueue ?? ((task, opts) => enqueueCommandInLane(sessionLane, task, opts));
+    params.enqueue ??
+    ((task: () => Promise<EmbeddedPiRunResult>, opts?: { warnAfterMs?: number; onWait?: (waitMs: number, queuedAhead: number) => void }) =>
+      enqueueCommandInLane(sessionLane, task, opts));
   const channelHint = params.messageChannel ?? params.messageProvider;
   const resolvedToolResultFormat =
     params.toolResultFormat ??
@@ -87,7 +101,7 @@ export async function runEmbeddedPiAgent(
   const isProbeSession = params.sessionId?.startsWith("probe-") ?? false;
 
   return enqueueSession(() =>
-    enqueueGlobal(async () => {
+    enqueueGlobal(async (): Promise<EmbeddedPiRunResult> => {
       const started = Date.now();
       const resolvedWorkspace = resolveUserPath(params.workspaceDir);
       const prevCwd = process.cwd();
@@ -104,10 +118,12 @@ export async function runEmbeddedPiAgent(
         modelId,
         agentDir,
         params.config,
-      );
+      ) as ResolvedModelResult;
       if (!model) {
         throw new Error(error ?? `Unknown model: ${provider}/${modelId}`);
       }
+      const modelSupportsTools = model.compat?.supportsTools ?? true;
+      const disableTools = params.disableTools ?? !modelSupportsTools;
 
       const ctxInfo = resolveContextWindowInfo({
         cfg: params.config,
@@ -324,7 +340,7 @@ export async function runEmbeddedPiAgent(
             skillsSnapshot: params.skillsSnapshot,
             prompt,
             images: params.images,
-            disableTools: params.disableTools,
+            disableTools,
             provider,
             modelId,
             model,

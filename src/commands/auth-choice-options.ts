@@ -20,7 +20,11 @@ export type AuthChoiceGroupId =
   | "minimax"
   | "synthetic"
   | "venice"
-  | "qwen";
+  | "qwen"
+  | "xiaomi"
+  | "groq"
+  | "ollama"
+  | "cerebras";
 
 export type AuthChoiceGroup = {
   value: AuthChoiceGroupId;
@@ -46,6 +50,18 @@ const AUTH_CHOICE_GROUP_DEFS: {
     label: "Anthropic",
     hint: "setup-token + API key",
     choices: ["token", "apiKey"],
+  },
+  {
+    value: "xiaomi",
+    label: "Xiaomi MiMo",
+    hint: "MiMo-V2-Flash (fast, 262k context)",
+    choices: ["xiaomi-api-key"],
+  },
+  {
+    value: "groq",
+    label: "Groq",
+    hint: "Llama 3 (ultra-fast inference)",
+    choices: ["groq-api-key"],
   },
   {
     value: "minimax",
@@ -108,10 +124,16 @@ const AUTH_CHOICE_GROUP_DEFS: {
     choices: ["zai-api-key"],
   },
   {
-    value: "opencode-zen",
-    label: "OpenCode Zen",
-    hint: "API key",
-    choices: ["opencode-zen"],
+    value: "ollama",
+    label: "Ollama",
+    hint: "Local LLMs (auto-discovery)",
+    choices: ["ollama"],
+  },
+  {
+    value: "cerebras",
+    label: "Cerebras",
+    hint: "GPT-style completions",
+    choices: ["cerebras-api-key"],
   },
 ];
 
@@ -166,6 +188,16 @@ export function buildAuthChoiceOptions(params: {
   options.push({ value: "zai-api-key", label: "Z.AI (GLM 4.7) API key" });
   options.push({ value: "qwen-portal", label: "Qwen OAuth" });
   options.push({
+    value: "xiaomi-api-key",
+    label: "Xiaomi MiMo API key",
+    hint: "Fast inference, 262k-token context window",
+  });
+  options.push({
+    value: "groq-api-key",
+    label: "Groq API key",
+    hint: "Llama 3, Mixtral (fastest inference)",
+  });
+  options.push({
     value: "copilot-proxy",
     label: "Copilot Proxy (local)",
     hint: "Local proxy for VS Code Copilot models",
@@ -179,10 +211,16 @@ export function buildAuthChoiceOptions(params: {
   });
   options.push({ value: "minimax-api", label: "MiniMax M2.1" });
   options.push({
+    value: "ollama",
+    label: "Ollama (local LLMs)",
+    hint: "Auto-discovers models from a local Ollama instance",
+  });
+  options.push({
     value: "minimax-api-lightning",
     label: "MiniMax M2.1 Lightning",
     hint: "Faster, higher output cost",
   });
+  options.push({ value: "cerebras-api-key", label: "Cerebras API key" });
   if (params.includeSkip) {
     options.push({ value: "skip", label: "Skip for now" });
   }

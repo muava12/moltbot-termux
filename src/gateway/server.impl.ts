@@ -486,7 +486,7 @@ export async function startGatewayServer(
   });
   if (isTermux()) {
     void sendTermuxNotification({
-      title: "Moltbot Gateway",
+      title: "OpenClaw Gateway",
       content: `Gateway started on port ${port}`,
       id: "moltbot-gateway",
       priority: "low",
@@ -582,7 +582,7 @@ export async function startGatewayServer(
     close: async (opts) => {
       if (isTermux()) {
         void sendTermuxNotification({
-          title: "Moltbot Gateway",
+          title: "OpenClaw Gateway",
           content: `Gateway stopped${opts?.reason ? `: ${opts.reason}` : ""}`,
           id: "moltbot-gateway",
           priority: "low",

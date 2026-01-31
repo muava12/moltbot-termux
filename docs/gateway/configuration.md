@@ -2472,6 +2472,33 @@ Notes:
 - Set `KIMICODE_API_KEY` in the environment or use `moltbot onboard --auth-choice kimi-code-api-key`.
 - Model ref: `kimi-code/kimi-for-coding`.
 
+### Xiaomi MiMo
+
+Use Xiaomi MiMo for fast inference with a large context window:
+
+```json5
+{
+  agents: {
+    defaults: { model: { primary: "xiaomi/mimo-v2-flash" } }
+  },
+  models: {
+    mode: "merge",
+    providers: {
+      xiaomi: {
+        baseUrl: "https://api.mimo.ai/v1",
+        apiKey: "${XIAOMI_API_KEY}",
+        api: "openai-completions",
+        models: [{ id: "mimo-v2-flash", name: "MiMo-V2-Flash" }]
+      }
+    }
+  }
+}
+```
+
+Notes:
+- Set `XIAOMI_API_KEY` or use `moltbot onboard --auth-choice xiaomi-api-key`.
+- Model ref: `xiaomi/mimo-v2-flash`.
+
 ### Synthetic (Anthropic-compatible)
 
 Use Synthetic's Anthropic-compatible endpoint:

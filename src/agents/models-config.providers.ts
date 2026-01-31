@@ -13,6 +13,8 @@ import {
   SYNTHETIC_MODEL_CATALOG,
 } from "./synthetic-models.js";
 import { discoverVeniceModels, VENICE_BASE_URL } from "./venice-models.js";
+import { discoverGroqModels, GROQ_BASE_URL } from "./groq-models.js";
+import { CEREBRAS_MODEL_CATALOG, buildCerebrasModelDefinition } from "./cerebras-models.js";
 
 type ModelsConfig = NonNullable<MoltbotConfig["models"]>;
 export type ProviderConfig = NonNullable<ModelsConfig["providers"]>[string];
@@ -64,6 +66,17 @@ const QWEN_PORTAL_DEFAULT_COST = {
   cacheWrite: 0,
 };
 
+const XIAOMI_BASE_URL = "https://platform.xiaomimimo.com/v1";
+const XIAOMI_DEFAULT_MODEL_ID = "mimo-v2-flash";
+const XIAOMI_DEFAULT_CONTEXT_WINDOW = 262144;
+const XIAOMI_DEFAULT_MAX_TOKENS = 32768;
+const XIAOMI_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
 const OLLAMA_BASE_URL = "http://127.0.0.1:11434/v1";
 const OLLAMA_API_BASE_URL = "http://127.0.0.1:11434";
 const OLLAMA_DEFAULT_CONTEXT_WINDOW = 128000;
@@ -90,9 +103,18 @@ interface OllamaTagsResponse {
   models: OllamaModel[];
 }
 
+interface OllamaShowResponse {
+  details: {
+    families: string[] | null;
+  };
+}
+
 async function discoverOllamaModels(): Promise<ModelDefinitionConfig[]> {
-  // Skip Ollama discovery in test environments
-  if (process.env.VITEST || process.env.NODE_ENV === "test") {
+  // Skip Ollama discovery in test environments unless explicitly enabled
+  if (
+    (process.env.VITEST || process.env.NODE_ENV === "test") &&
+    !process.env.MOLTBOT_TEST_OLLAMA
+  ) {
     return [];
   }
   try {
@@ -108,7 +130,27 @@ async function discoverOllamaModels(): Promise<ModelDefinitionConfig[]> {
       console.warn("No Ollama models found on local instance");
       return [];
     }
-    return data.models.map((model) => {
+
+    const modelsWithDetails = await Promise.all(
+      data.models.map(async (model) => {
+        try {
+          const showResponse = await fetch(`${OLLAMA_API_BASE_URL}/api/show`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: model.name }),
+            signal: AbortSignal.timeout(5000),
+          });
+          if (!showResponse.ok) return { ...model, supportsTools: false };
+          const showData = (await showResponse.json()) as OllamaShowResponse;
+          const supportsTools = showData.details?.families?.includes("tool_use") ?? false;
+          return { ...model, supportsTools };
+        } catch {
+          return { ...model, supportsTools: false };
+        }
+      }),
+    );
+
+    return modelsWithDetails.map((model) => {
       const modelId = model.name;
       const isReasoning =
         modelId.toLowerCase().includes("r1") || modelId.toLowerCase().includes("reasoning");
@@ -120,6 +162,9 @@ async function discoverOllamaModels(): Promise<ModelDefinitionConfig[]> {
         cost: OLLAMA_DEFAULT_COST,
         contextWindow: OLLAMA_DEFAULT_CONTEXT_WINDOW,
         maxTokens: OLLAMA_DEFAULT_MAX_TOKENS,
+        compat: {
+          supportsTools: model.supportsTools,
+        },
       };
     });
   } catch (error) {
@@ -341,6 +386,24 @@ function buildSyntheticProvider(): ProviderConfig {
   };
 }
 
+function buildXiaomiProvider(): ProviderConfig {
+  return {
+    baseUrl: XIAOMI_BASE_URL,
+    api: "openai-completions",
+    models: [
+      {
+        id: XIAOMI_DEFAULT_MODEL_ID,
+        name: "MiMo-V2-Flash",
+        reasoning: false,
+        input: ["text"],
+        cost: XIAOMI_DEFAULT_COST,
+        contextWindow: XIAOMI_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: XIAOMI_DEFAULT_MAX_TOKENS,
+      },
+    ],
+  };
+}
+
 async function buildVeniceProvider(): Promise<ProviderConfig> {
   const models = await discoverVeniceModels();
   return {
@@ -354,6 +417,15 @@ async function buildOllamaProvider(): Promise<ProviderConfig> {
   const models = await discoverOllamaModels();
   return {
     baseUrl: OLLAMA_BASE_URL,
+    api: "openai-completions",
+    models,
+  };
+}
+
+async function buildGroqProvider(apiKey: string): Promise<ProviderConfig> {
+  const models = await discoverGroqModels(apiKey);
+  return {
+    baseUrl: GROQ_BASE_URL,
     api: "openai-completions",
     models,
   };
@@ -395,6 +467,13 @@ export async function resolveImplicitProviders(params: {
     providers.synthetic = { ...buildSyntheticProvider(), apiKey: syntheticKey };
   }
 
+  const xiaomiKey =
+    resolveEnvApiKeyVarName("xiaomi") ??
+    resolveApiKeyFromProfiles({ provider: "xiaomi", store: authStore });
+  if (xiaomiKey) {
+    providers.xiaomi = { ...buildXiaomiProvider(), apiKey: xiaomiKey };
+  }
+
   const veniceKey =
     resolveEnvApiKeyVarName("venice") ??
     resolveApiKeyFromProfiles({ provider: "venice", store: authStore });
@@ -410,12 +489,35 @@ export async function resolveImplicitProviders(params: {
     };
   }
 
-  // Ollama provider - only add if explicitly configured
-  const ollamaKey =
-    resolveEnvApiKeyVarName("ollama") ??
-    resolveApiKeyFromProfiles({ provider: "ollama", store: authStore });
-  if (ollamaKey) {
-    providers.ollama = { ...(await buildOllamaProvider()), apiKey: ollamaKey };
+  // Ollama provider - native local discovery, but only if opted in
+  const ollamaProfiles = listProfilesForProvider(authStore, "ollama");
+  if (ollamaProfiles.length > 0) {
+    const ollamaProvider = await buildOllamaProvider();
+    if (ollamaProvider.models.length > 0) {
+      const ollamaKey =
+        resolveEnvApiKeyVarName("ollama") ??
+        resolveApiKeyFromProfiles({ provider: "ollama", store: authStore });
+      providers.ollama = { ...ollamaProvider, apiKey: ollamaKey ?? "ollama" };
+    }
+  }
+
+  const groqKey =
+    resolveEnvApiKeyVarName("groq") ??
+    resolveApiKeyFromProfiles({ provider: "groq", store: authStore });
+  if (groqKey) {
+    providers.groq = { ...(await buildGroqProvider(groqKey)), apiKey: groqKey };
+  }
+
+  const cerebrasKey =
+    resolveEnvApiKeyVarName("cerebras") ??
+    resolveApiKeyFromProfiles({ provider: "cerebras", store: authStore });
+  if (cerebrasKey) {
+    providers.cerebras = {
+      baseUrl: "https://api.cerebras.ai/v1", // Explicitly set base URL for Cerebras
+      api: "cerebras-completions", // Use the newly defined API type
+      models: CEREBRAS_MODEL_CATALOG.map(buildCerebrasModelDefinition), // Use the static catalog
+      apiKey: cerebrasKey,
+    };
   }
 
   return providers;

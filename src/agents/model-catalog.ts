@@ -9,6 +9,11 @@ export type ModelCatalogEntry = {
   contextWindow?: number;
   reasoning?: boolean;
   input?: Array<"text" | "image">;
+  /** Compat flags for model behavior. */
+  compat?: {
+    /** True if the model supports tool use. */
+    supportsTools?: boolean;
+  };
 };
 
 type DiscoveredModel = {
@@ -18,6 +23,9 @@ type DiscoveredModel = {
   contextWindow?: number;
   reasoning?: boolean;
   input?: Array<"text" | "image">;
+  compat?: {
+    supportsTools?: boolean;
+  };
 };
 
 type PiSdkModule = typeof import("@mariozechner/pi-coding-agent");
@@ -85,7 +93,8 @@ export async function loadModelCatalog(params?: {
         const input = Array.isArray(entry?.input)
           ? (entry.input as Array<"text" | "image">)
           : undefined;
-        models.push({ id, name, provider, contextWindow, reasoning, input });
+        const compat = entry?.compat;
+        models.push({ id, name, provider, contextWindow, reasoning, input, compat });
       }
 
       if (models.length === 0) {

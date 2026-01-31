@@ -3,6 +3,7 @@ export {
   SYNTHETIC_DEFAULT_MODEL_REF,
 } from "../agents/synthetic-models.js";
 export { VENICE_DEFAULT_MODEL_ID, VENICE_DEFAULT_MODEL_REF } from "../agents/venice-models.js";
+export { CEREBRAS_DEFAULT_MODEL_REF } from "../agents/cerebras-models.js";
 export {
   applyAuthProfileConfig,
   applyKimiCodeConfig,
@@ -18,6 +19,12 @@ export {
   applyVercelAiGatewayConfig,
   applyVercelAiGatewayProviderConfig,
   applyZaiConfig,
+  applyXiaomiConfig,
+  applyXiaomiProviderConfig,
+  applyGroqConfig,
+  applyGroqProviderConfig,
+  applyCerebrasConfig,
+  applyCerebrasProviderConfig,
 } from "./onboard-auth.config-core.js";
 export {
   applyMinimaxApiConfig,
@@ -42,6 +49,9 @@ export {
   setOpencodeZenApiKey,
   setOpenrouterApiKey,
   setSyntheticApiKey,
+  setXiaomiApiKey,
+  setGroqApiKey,
+  setCerebrasApiKey,
   setVeniceApiKey,
   setVercelAiGatewayApiKey,
   setZaiApiKey,
@@ -54,14 +64,22 @@ export {
   buildMinimaxApiModelDefinition,
   buildMinimaxModelDefinition,
   buildMoonshotModelDefinition,
+  buildXiaomiModelDefinition,
+  buildGroqModelDefinition,
   DEFAULT_MINIMAX_BASE_URL,
   KIMI_CODE_BASE_URL,
   KIMI_CODE_MODEL_ID,
   KIMI_CODE_MODEL_REF,
+  GROQ_BASE_URL,
+  GROQ_DEFAULT_MODEL_ID,
+  GROQ_DEFAULT_MODEL_REF,
   MINIMAX_API_BASE_URL,
   MINIMAX_HOSTED_MODEL_ID,
   MINIMAX_HOSTED_MODEL_REF,
   MOONSHOT_BASE_URL,
   MOONSHOT_DEFAULT_MODEL_ID,
   MOONSHOT_DEFAULT_MODEL_REF,
+  XIAOMI_BASE_URL,
+  XIAOMI_DEFAULT_MODEL_ID,
+  XIAOMI_DEFAULT_MODEL_REF,
 } from "./onboard-auth.models.js";

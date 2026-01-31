@@ -25,6 +25,7 @@ function isErrno(err: unknown): err is NodeJS.ErrnoException {
 export function parseSshTarget(raw: string): SshParsedTarget | null {
   const trimmed = raw.trim().replace(/^ssh\s+/, "");
   if (!trimmed) return null;
+  if (trimmed.startsWith("-")) return null;
 
   const [userPart, hostPart] = trimmed.includes("@")
     ? ((): [string | undefined, string] => {
@@ -34,6 +35,8 @@ export function parseSshTarget(raw: string): SshParsedTarget | null {
         return [user || undefined, host];
       })()
     : [undefined, trimmed];
+
+  if (hostPart.startsWith("-")) return null;
 
   const colonIdx = hostPart.lastIndexOf(":");
   if (colonIdx > 0 && colonIdx < hostPart.length - 1) {
@@ -134,7 +137,7 @@ export async function startSshPortForward(opts: {
   if (opts.identity?.trim()) {
     args.push("-i", opts.identity.trim());
   }
-  args.push(userHost);
+  args.push("--", userHost);
 
   const stderr: string[] = [];
   const child = spawn("/usr/bin/ssh", args, {
